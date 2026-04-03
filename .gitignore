@@ -1,0 +1,6 @@
+# environment
+.env*
+.venv/
+alembic.ini
+versions/
+alembic/env.py
