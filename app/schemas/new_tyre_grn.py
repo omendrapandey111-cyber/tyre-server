@@ -33,8 +33,8 @@ class NewGRNCreate(BaseModel):
     # grn_no and grn_date are auto-generated in backend
     grn_date: Optional[date] = None
     
-    office_id: int = Field(..., gt=0)
-    vendor_id: int = Field(..., gt=0)
+    office_id: str = Field(..., min_length=1)
+    vendor_id: str = Field(..., min_length=1)
     vendor_office: str = Field(..., min_length=1)
     state: Optional[str] = None
     gst_no: Optional[str] = None
@@ -58,9 +58,9 @@ class NewGRNCreate(BaseModel):
 class NewGRNResponse(BaseModel):
     grn_no: str
     grn_date: date
-    office_id: int
-    vendor_id: int
-    challan_no: int
+    office_id: str
+    vendor_id: str
+    challan_no: str
     total_tyre_count: int
     total_gst: float
     total_discount: float
