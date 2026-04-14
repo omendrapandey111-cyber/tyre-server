@@ -1,5 +1,5 @@
 from app.db.database import Base, engine
-from app.api import new_tyre_grn, office, place, fleet_vendor, tyre_support_master, tyres, vehicle_model, vehicle_type
+from app.api import new_tyre_grn, office, place, fleet_vendor, tyre_support_master, tyres, vehicle_model, vehicle_type, transaction
 
 from fastapi.middleware.cors import CORSMiddleware
  
@@ -26,6 +26,8 @@ app.include_router(vehicle_model.router)
 app.include_router(tyres.router)
 app.include_router(new_tyre_grn.router)
 app.include_router(vehicle_type.router)
+
+app.include_router(transaction.router)
 
 @app.get("/")
 def read_root():

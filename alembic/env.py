@@ -12,6 +12,7 @@ from app.models.manufacturer import Manufacturer
 from app.models.vehicle_model import VehicleModel
 from app.models.new_tyre_grn import NewGRN, Tyre
 from app.models.vehicle_type import VehicleType
+from app.models.transaction import Transaction
 
 from app.db.database import Base
 
