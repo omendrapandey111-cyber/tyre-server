@@ -3,7 +3,7 @@ from app.api import issue_receipt, new_tyre_grn, office, place, fleet_vendor, ty
 
 from fastapi.middleware.cors import CORSMiddleware
  
-Base.metadata.create_all(bind=engine)
+#Base.metadata.create_all(bind=engine)
 
 from fastapi import Depends, FastAPI
 app = FastAPI(title="Tyre Management API")
