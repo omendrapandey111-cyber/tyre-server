@@ -13,8 +13,9 @@ def get_all_tyres(db: Session = Depends(get_db)):
     return [
         {
             "tyre_no": t.tyre_no,
-            "type": t.grn.type if t.grn else None,   # 🔥 coming from GRN
-            "status": "Off Vehicle",                 # default for now
+            "type": t.grn.type if t.grn else None, 
+            "status": t.status,
+            "vehicle_no": t.vehicle_no,
             "grn_no": t.grn_no,
             "production_month": t.production_month,
             "size": t.size,

@@ -48,7 +48,9 @@ class Tyre(Base):
     __tablename__ = "tyres"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    tyre_no = Column(String(50), unique=True, nullable=False, index=True)   # tyre serial / unique identifier
+    tyre_no = Column(String(50), unique=True, nullable=False, index=True)   
+
+    vehicle_no = Column(String(20), nullable=False, index=True)  
     
     production_month = Column(String(10))   # e.g. "2026-03"
     size = Column(String(50), nullable=False)
@@ -57,14 +59,15 @@ class Tyre(Base):
     rubber_type = Column(String(50))
     remark = Column(String(500))
     
-    amount = Column(Float, nullable=False)          # base price per tyre
-    discount = Column(Float, default=0.0)           # discount % or flat (your choice)
+    amount = Column(Float, nullable=False)          
+    discount = Column(Float, default=0.0)           
     cgst = Column(Float, default=0.0)
     sgst = Column(Float, default=0.0)
     igst = Column(Float, default=0.0)
     discount_amt = Column(Float, default=0.0)
     total_gst = Column(Float, default=0.0)
     total_amt = Column(Float, nullable=False)
+    status = Column(String(20), nullable=False, default="Off Vehicle")
     
     # Link to GRN (we store grn_no so any tyre query instantly shows its GRN)
     grn_no = Column(String(50), ForeignKey("new_grn.grn_no"), nullable=False)

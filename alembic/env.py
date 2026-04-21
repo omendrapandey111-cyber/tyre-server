@@ -13,6 +13,9 @@ from app.models.vehicle_model import VehicleModel
 from app.models.new_tyre_grn import NewGRN, Tyre
 from app.models.vehicle_type import VehicleType
 from app.models.transaction import Transaction
+from app.models.issue_receipt import IssueReceipt
+from app.models.tyre_position import TyrePosition
+from app.models.tyre_layouts import TyreLayout
 
 from app.db.database import Base
 
