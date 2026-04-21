@@ -55,3 +55,5 @@ for router in protected_routers:
 @app.get("/")
 def read_root():
     return {"message": "API is running"}
+
+handler = app
