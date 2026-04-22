@@ -21,6 +21,7 @@ class TyrePositionResponse(TyrePositionBase):
     id: int
     vehicle_no: str
     tyre_no: str
+    name: str | None= None
     position: str
     event_type: str
     created_at: datetime
