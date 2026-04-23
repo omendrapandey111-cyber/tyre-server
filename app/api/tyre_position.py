@@ -94,7 +94,7 @@ def get_all_current_positions(db: Session = Depends(get_db)):
                 "vehicle_no": None,
                 "position": None,
                 "name": None,
-                "status": "OFF_VEHICLE",
+                "status": "Off Vehicle",
                 "last_updated": row["created_at"]
             })
         else:
@@ -103,7 +103,7 @@ def get_all_current_positions(db: Session = Depends(get_db)):
                 "vehicle_no": row["vehicle_no"],
                 "position": row["position"],
                 "name": name,
-                "status": "ON_VEHICLE",
+                "status": "On Vehicle",
                 "last_updated": row["created_at"]
             })
 
