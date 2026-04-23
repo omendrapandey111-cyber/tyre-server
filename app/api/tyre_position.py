@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.db.deps import get_db
 from app.models.tyre_position import TyrePosition
@@ -59,27 +60,51 @@ def get_current_positions(vehicle_no: str, db: Session = Depends(get_db)):
 
 
 
-@router.get("/vehicle/{vehicle_no}/current-simple")
-def get_current_positions_simple(vehicle_no: str, db: Session = Depends(get_db)):
+@router.get("/current-all")
+def get_all_current_positions(db: Session = Depends(get_db)):
 
-    rows = db.query(TyrePosition)\
-        .filter(TyrePosition.vehicle_no == vehicle_no)\
-        .order_by(
-            TyrePosition.position,
-            TyrePosition.created_at.desc()
-        )\
-        .all()
+    query = text("""
+        SELECT DISTINCT ON (tyre_no)
+            tyre_no,
+            vehicle_no,
+            position,
+            event_type,
+            created_at
+        FROM tyre_positions
+        ORDER BY tyre_no, created_at DESC
+    """)
 
-    latest = {}
+    result = db.execute(query).fetchall()
 
-    for r in rows:
-        if r.position not in latest:
-            parsed = parse_position(r.position)
-            latest[r.position] = {
-                "tyre_no": r.tyre_no,
-                "position": r.position,
-                "name": parsed["name"],
-            }
+    response = []
 
+    for row in result:
+        row = dict(row._mapping)
 
-    return latest
+        # handle position parsing
+        name = None
+        if row["position"]:
+            parsed = parse_position(row["position"])
+            name = parsed["name"]
+
+        # apply your business logic
+        if row["event_type"] == "RECEIPT":
+            response.append({
+                "tyre_no": row["tyre_no"],
+                "vehicle_no": None,
+                "position": None,
+                "name": None,
+                "status": "OFF_VEHICLE",
+                "last_updated": row["created_at"]
+            })
+        else:
+            response.append({
+                "tyre_no": row["tyre_no"],
+                "vehicle_no": row["vehicle_no"],
+                "position": row["position"],
+                "name": name,
+                "status": "ON_VEHICLE",
+                "last_updated": row["created_at"]
+            })
+
+    return response
