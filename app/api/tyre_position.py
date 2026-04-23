@@ -61,17 +61,26 @@ def get_current_positions(vehicle_no: str, db: Session = Depends(get_db)):
 
 
 @router.get("/current-all")
-def get_all_current_positions(db: Session = Depends(get_db)):
+def get_current_all_tyres(db: Session = Depends(get_db)):
 
     query = text("""
-        SELECT DISTINCT ON (tyre_no)
-            tyre_no,
-            vehicle_no,
-            position,
-            event_type,
-            created_at
-        FROM tyre_positions
-        ORDER BY tyre_no, created_at DESC
+        SELECT 
+            t.tyre_no,
+            tp.vehicle_no,
+            tp.position,
+            tp.event_type,
+            tp.created_at
+        FROM tyres t
+        LEFT JOIN (
+            SELECT DISTINCT ON (tyre_no)
+                tyre_no,
+                vehicle_no,
+                position,
+                event_type,
+                created_at
+            FROM tyre_positions
+            ORDER BY tyre_no, created_at DESC
+        ) tp ON t.tyre_no = tp.tyre_no
     """)
 
     result = db.execute(query).fetchall()
@@ -81,13 +90,19 @@ def get_all_current_positions(db: Session = Depends(get_db)):
     for row in result:
         row = dict(row._mapping)
 
-        # handle position parsing
-        name = None
-        if row["position"]:
-            parsed = parse_position(row["position"])
-            name = parsed["name"]
+        # If no history exists → OFF VEHICLE
+        if row["event_type"] is None:
+            response.append({
+                "tyre_no": row["tyre_no"],
+                "vehicle_no": None,
+                "position": None,
+                "name": None,
+                "status": "Off Vehicle",
+                "last_updated": None
+            })
+            continue
 
-        # apply your business logic
+        # If latest event is RECEIPT → OFF VEHICLE
         if row["event_type"] == "RECEIPT":
             response.append({
                 "tyre_no": row["tyre_no"],
@@ -98,6 +113,11 @@ def get_all_current_positions(db: Session = Depends(get_db)):
                 "last_updated": row["created_at"]
             })
         else:
+            name = None
+            if row["position"]:
+                parsed = parse_position(row["position"])
+                name = parsed["name"]
+
             response.append({
                 "tyre_no": row["tyre_no"],
                 "vehicle_no": row["vehicle_no"],
