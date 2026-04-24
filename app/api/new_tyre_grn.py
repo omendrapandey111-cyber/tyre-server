@@ -9,34 +9,34 @@ from app.schemas.new_tyre_grn import NewGRNCreate, NewGRNResponse
 router = APIRouter(prefix="/new-tyre-grn", tags=["New Tyre GRN"])
 
 
-def generate_grn_no(db: Session, grn_type: str) -> str:
-    #map the type to prefix
+def generate_grn_no(db: Session, grn_type):
     prefix_map = {
         "New": "NW",
         "New-Remould": "NR",
         "Chassis": "CS"
     }
-    prefix_code= prefix_map.get(grn_type.value)
+
+    grn_type_value = grn_type.value if hasattr(grn_type, "value") else grn_type
+    prefix_code = prefix_map.get(grn_type_value)
+
     if not prefix_code:
         raise ValueError("Invalid GRN type")
-    
-    #DDMMYY format
+
     today = date.today().strftime("%d%m%y")
-    
-    # Get the highest sequence for same prefix
+
     last_grn = (
-        db.query(NewGRN.grn_no)\
-        .filter(NewGRN.grn_no.like(f"{today}%"))\
-        .order_by(NewGRN.grn_no.desc())\
+        db.query(NewGRN.grn_no)
+        .filter(NewGRN.grn_no.like(f"{prefix_code}-{today}-%"))
+        .order_by(NewGRN.grn_no.desc())
         .first()
     )
+
     if last_grn:
         seq = int(last_grn[0].split("-")[-1]) + 1
     else:
         seq = 1
-    
-    return f"{prefix_code}-{today}-{seq:06d}"
 
+    return f"{prefix_code}-{today}-{seq:06d}"
 
 @router.post("/", response_model=NewGRNResponse, status_code=status.HTTP_201_CREATED)
 def create_new_tyre_grn(
