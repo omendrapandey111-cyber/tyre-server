@@ -49,8 +49,6 @@ class Tyre(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     tyre_no = Column(String(50), unique=True, nullable=False, index=True)   
-
-    vehicle_no = Column(String(20), nullable=False, index=True)  
     
     production_month = Column(String(10))   # e.g. "2026-03"
     size = Column(String(50), nullable=False)
