@@ -124,17 +124,6 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
                     old_tyre.vehicle_no = None
                     old_tyre.status = "Off Vehicle"
 
-                # log removal
-                db.add(TyrePosition(
-                    vehicle_no=data.vehicle_no,
-                    layout_id=data.layout_id,
-                    tyre_no=existing.tyre_no,
-                    position=item.wheel_position,
-                    event_type="REPLACE_REMOVE",
-                    reference_ir_id=ir_entry.id,
-                    created_by=data.created_by
-                ))
-
             #ADD NEW TYRE
             db.add(TyrePosition(
                 vehicle_no=data.vehicle_no,

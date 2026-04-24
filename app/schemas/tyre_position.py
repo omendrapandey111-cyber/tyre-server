@@ -17,13 +17,14 @@ class TyrePositionCreate(TyrePositionBase):
     pass
 
 
-class TyrePositionResponse(TyrePositionBase):
+class TyrePositionResponse(BaseModel):
     id: int
-    vehicle_no: str
     tyre_no: str
-    name: str | None= None
+    vehicle_no: str
     position: str
+    name: str | None= None
     event_type: str
+    created_by: str
     created_at: datetime
 
     class Config:

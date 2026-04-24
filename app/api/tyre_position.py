@@ -20,6 +20,7 @@ def get_all_positions(db: Session = Depends(get_db)):
     return rows
 
 
+
 # Get history of a specific vehicle
 @router.get("/vehicle/{vehicle_no}", response_model=list[TyrePositionResponse])
 def get_vehicle_history(vehicle_no: str, db: Session = Depends(get_db)):
@@ -128,3 +129,25 @@ def get_current_all_tyres(db: Session = Depends(get_db)):
             })
 
     return response
+
+
+# Get history of a specific tyre
+@router.get("/{tyre_no}", response_model=list[TyrePositionResponse])
+def get_tyre_history(tyre_no: str, db: Session = Depends(get_db)):
+
+    rows = db.query(TyrePosition)\
+        .filter(TyrePosition.tyre_no == tyre_no)\
+        .order_by(TyrePosition.created_at.desc())\
+        .all()
+
+    if not rows:
+        raise HTTPException(404, f"No history found for tyre {tyre_no}")
+
+    for r in rows:
+        if r.position:
+            parsed = parse_position(r.position)
+            r.name = parsed["name"]
+        else:
+            r.name = None
+
+    return rows
