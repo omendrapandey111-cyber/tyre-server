@@ -104,7 +104,7 @@ def get_current_all_tyres(db: Session = Depends(get_db)):
             continue
 
         # If latest event is RECEIPT → OFF VEHICLE
-        if row["event_type"] == "RECEIPT":
+        if row["event_type"] == "Receipt":
             response.append({
                 "tyre_no": row["tyre_no"],
                 "vehicle_no": None,

@@ -97,7 +97,7 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
             # Check if position already has ACTIVE tyre
             existing = get_latest_position(db, data.vehicle_no, item.wheel_position)
 
-            if existing and existing.event_type == "ISSUE":
+            if existing and existing.event_type == "Issue":
                 # Do NOT auto-remove — frontend already handles receipt
                 raise HTTPException(
                     400,
@@ -127,7 +127,7 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
                 layout_id=data.layout_id,
                 tyre_no=item.tyre_no,
                 position=item.wheel_position,
-                event_type="ISSUE",
+                event_type="Issue",
                 reference_ir_id=ir_entry.id,
                 created_by=data.created_by
             ))
@@ -146,7 +146,7 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
             latest = get_latest_tyre_record(db, data.vehicle_no, item.tyre_no)
 
             # Only allow receipt if tyre is currently ON vehicle
-            if not latest or latest.event_type != "ISSUE":
+            if not latest or latest.event_type != "Issue":
                 raise HTTPException(
                     400,
                     f"Tyre {item.tyre_no} is not currently on vehicle"
@@ -175,7 +175,7 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
                 layout_id=data.layout_id,
                 tyre_no=item.tyre_no,
                 position=latest.position,
-                event_type="RECEIPT",
+                event_type="Receipt",
                 reference_ir_id=ir_entry.id,
                 created_by=data.created_by
             ))
