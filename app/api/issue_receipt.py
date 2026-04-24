@@ -31,12 +31,24 @@ def generate_ir_no(db: Session, action_type: str, ir_date: date) -> str:
     return f"{prefix}-{date_str}-{seq:06d}"
 
 
-def get_active_position(db, vehicle_no, position):
+def get_latest_position(db, vehicle_no, position):
     return db.query(TyrePosition)\
         .filter(
             TyrePosition.vehicle_no == vehicle_no,
             TyrePosition.position == position,
-        ).first()
+        )\
+        .order_by(TyrePosition.created_at.desc())\
+        .first()
+
+
+def get_latest_tyre_record(db, vehicle_no, tyre_no):
+    return db.query(TyrePosition)\
+        .filter(
+            TyrePosition.vehicle_no == vehicle_no,
+            TyrePosition.tyre_no == tyre_no,
+        )\
+        .order_by(TyrePosition.created_at.desc())\
+        .first()
 
 
 def validate_position(layout, position):
@@ -74,36 +86,7 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
 
         final_status = "On Vehicle" if data.action_type == "Issue" else "Off Vehicle"
 
-        #CREATE ISSUE RECEIPT
-        ir_entry = IssueReceipt(
-            ir_no=ir_no,
-            action_type=data.action_type.value,
-            ir_date=ir_date,
-            office_id=data.office_id,
-            vehicle_no=data.vehicle_no,
-            vehicle_km=data.vehicle_km,
-            tyre_no=item.tyre_no,
-
-            convert_to_stepney=item.convert_to_stepney,
-            outer_nsd=item.outer_nsd,
-            center_nsd=item.center_nsd,
-            center2_nsd=item.center2_nsd,
-            inner_nsd=item.inner_nsd,
-            average_nsd=item.average_nsd,
-
-            issue_to_stepney=item.issue_to_stepney,
-            wheel_position=item.wheel_position,
-            remarks=item.remarks,
-
-            status=final_status,
-            created_by=data.created_by,
-        )
-
-        db.add(ir_entry)
-        db.flush()
-
-        #POSITION LOGIC 
-
+        # ================= ISSUE =================
         if data.action_type == "Issue":
 
             if not item.wheel_position:
@@ -111,20 +94,34 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
 
             validate_position(layout, item.wheel_position)
 
-            existing = get_active_position(db, data.vehicle_no, item.wheel_position)
+            # Check if position already has ACTIVE tyre
+            existing = get_latest_position(db, data.vehicle_no, item.wheel_position)
 
-            #REPLACEMENT CASE (remove old tyre first)
-            if existing and existing.tyre_no is not None:
+            if existing and existing.event_type == "ISSUE":
+                # Do NOT auto-remove — frontend already handles receipt
+                raise HTTPException(
+                    400,
+                    f"Position {item.wheel_position} already occupied. Perform receipt first."
+                )
 
-                old_tyre = db.query(Tyre)\
-                    .filter(Tyre.tyre_no == existing.tyre_no)\
-                    .first()
+            # Create Issue Entry
+            ir_entry = IssueReceipt(
+                ir_no=ir_no,
+                action_type="Issue",
+                ir_date=ir_date,
+                office_id=data.office_id,
+                vehicle_no=data.vehicle_no,
+                vehicle_km=data.vehicle_km,
+                tyre_no=item.tyre_no,
+                wheel_position=item.wheel_position,
+                status="On Vehicle",
+                created_by=data.created_by,
+            )
 
-                if old_tyre:
-                    old_tyre.vehicle_no = None
-                    old_tyre.status = "Off Vehicle"
+            db.add(ir_entry)
+            db.flush()
 
-            #ADD NEW TYRE
+            # Log position
             db.add(TyrePosition(
                 vehicle_no=data.vehicle_no,
                 layout_id=data.layout_id,
@@ -135,40 +132,60 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
                 created_by=data.created_by
             ))
 
-            # UPDATE TYRE MASTER
+            # Update tyre master
             tyre.vehicle_no = data.vehicle_no
             tyre.status = "On Vehicle"
 
-        # RECEIPT
+            db.add(tyre)
+            results.append(ir_entry)
+
+        # ================= RECEIPT =================
 
         elif data.action_type == "Receipt":
 
-            current = db.query(TyrePosition)\
-                .filter(
-                    TyrePosition.vehicle_no == data.vehicle_no,
-                    TyrePosition.tyre_no == item.tyre_no,
-                )\
-                .first()
+            latest = get_latest_tyre_record(db, data.vehicle_no, item.tyre_no)
 
-            if not current:
-                raise HTTPException(400, f"Tyre {item.tyre_no} not on vehicle")
+            # Only allow receipt if tyre is currently ON vehicle
+            if not latest or latest.event_type != "ISSUE":
+                raise HTTPException(
+                    400,
+                    f"Tyre {item.tyre_no} is not currently on vehicle"
+                )
 
+            # Create Receipt Entry
+            ir_entry = IssueReceipt(
+                ir_no=ir_no,
+                action_type="Receipt",
+                ir_date=ir_date,
+                office_id=data.office_id,
+                vehicle_no=data.vehicle_no,
+                vehicle_km=data.vehicle_km,
+                tyre_no=item.tyre_no,
+                wheel_position=latest.position,
+                status="Off Vehicle",
+                created_by=data.created_by,
+            )
+
+            db.add(ir_entry)
+            db.flush()
+
+            # Log receipt
             db.add(TyrePosition(
                 vehicle_no=data.vehicle_no,
                 layout_id=data.layout_id,
                 tyre_no=item.tyre_no,
-                position=current.position,
+                position=latest.position,
                 event_type="RECEIPT",
                 reference_ir_id=ir_entry.id,
                 created_by=data.created_by
             ))
 
-            # UPDATE TYRE MASTER
+            # Update tyre master
             tyre.vehicle_no = None
             tyre.status = "Off Vehicle"
 
-        db.add(tyre)
-        results.append(ir_entry)
+            db.add(tyre)
+            results.append(ir_entry)
 
     db.commit()
 
@@ -179,7 +196,7 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
     }
 
 
-# Get All Issue/Receipt records
+# ================= GET ALL =================
 
 @router.get("/")
 def get_all_issue_receipts(db: Session = Depends(get_db)):
