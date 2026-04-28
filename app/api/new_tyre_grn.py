@@ -131,12 +131,28 @@ def get_grn_details(
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user)
 ):
-    grn = db.query(NewGRN).filter(
-        NewGRN.grn_no == grn_no,
-        NewGRN.org_id == current_user.org_id
-    ).first()
+    """
+    Fetch GRN by grn_no and return full data including org_id and zone_id.
+    Access control will be handled in the frontend (same as Sensors).
+    """
+    grn = db.query(NewGRN).filter(NewGRN.grn_no == grn_no).first()
 
     if not grn:
-        raise HTTPException(status_code=404, detail="GRN not found or access denied")
+        raise HTTPException(status_code=404, detail="GRN not found")
 
-    return NewGRNResponse.from_orm(grn)
+    # Return full GRN data without strict access filtering
+    return NewGRNResponse(
+        grn_no=grn.grn_no,
+        grn_date=grn.grn_date,
+        org_id=grn.org_id,
+        zone_id=grn.zone_id,
+        office_id=grn.office_id,
+        vendor_id=grn.vendor_id,
+        challan_no=grn.challan_no,
+        total_tyre_count=grn.total_tyre_count,
+        total_gst=grn.total_gst,
+        total_discount=grn.total_discount,
+        total_amount=grn.total_amount,
+        type=grn.type,
+        message="GRN details retrieved successfully"
+    )

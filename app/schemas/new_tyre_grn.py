@@ -61,8 +61,8 @@ class NewGRNCreate(BaseModel):
 class NewGRNResponse(BaseModel):
     grn_no: str
     grn_date: date
-    org_id: UUID
-    zone_id: UUID
+    org_id: Optional[UUID] = None
+    zone_id: Optional[UUID] = None
     office_id: str
     vendor_id: str
     challan_no: str
