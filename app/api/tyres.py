@@ -3,18 +3,18 @@ from sqlalchemy.orm import Session
 from app.db.deps import get_db
 from app.models.new_tyre_grn import Tyre
 from uuid import UUID
-from app.core.security import get_current_user   
+from app.core.security import CurrentUser, get_current_user   
 
 router = APIRouter(prefix="/tyres", tags=["Tyres"])
 
 
 @router.get("/")
-def get_all_tyres(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def get_all_tyres(db: Session = Depends(get_db), current_user: CurrentUser = Depends(get_current_user)):
     query = db.query(Tyre)
 
-    if getattr(current_user, 'role', None) != 'superadmin':
+    if current_user.role == 'superadmin':
         pass
-    elif getattr(current_user, 'zone_id', None):
+    elif current_user.zone_id:
         query = query.filter(Tyre.zone_id == current_user.zone_id)
     else:
         query = query.filter(Tyre.org_id == current_user.org_id)

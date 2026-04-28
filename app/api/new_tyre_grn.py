@@ -6,7 +6,7 @@ from uuid import UUID
 from app.db.deps import get_db
 from app.models.new_tyre_grn import NewGRN, Tyre, GRNType
 from app.schemas.new_tyre_grn import NewGRNCreate, NewGRNResponse
-from app.core.security import get_current_user   # Adjust path if needed
+from app.core.security import get_current_user , CurrentUser  
 
 router = APIRouter(prefix="/new-tyre-grn", tags=["New Tyre GRN"])
 
@@ -38,10 +38,10 @@ def generate_grn_no(db: Session, grn_type: GRNType) -> str:
 def create_new_tyre_grn(
     data: NewGRNCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     # Security: User must belong to the same organization
-    if str(current_user.org_id) != str(data.org_id):
+    if current_user.org_id != data.org_id:
         raise HTTPException(status_code=403, detail="You can only create GRN for your own organization")
 
     grn_no = generate_grn_no(db, data.type)
@@ -129,7 +129,7 @@ def create_new_tyre_grn(
 def get_grn_details(
     grn_no: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     grn = db.query(NewGRN).filter(
         NewGRN.grn_no == grn_no,
