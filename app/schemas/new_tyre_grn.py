@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from datetime import date
 from enum import Enum as PyEnum
-
+from uuid import UUID
 
 class GRNType(str, PyEnum):
     NEW = "New"
@@ -32,6 +32,9 @@ class TyreCreate(BaseModel):
 class NewGRNCreate(BaseModel):
     # grn_no and grn_date are auto-generated in backend
     grn_date: Optional[date] = None
+
+    org_id: UUID = Field(..., description="Organization UUID")
+    zone_id: UUID = Field(..., description="Zone UUID")
     
     office_id: str = Field(..., min_length=1)
     vendor_id: str = Field(..., min_length=1)
@@ -58,6 +61,8 @@ class NewGRNCreate(BaseModel):
 class NewGRNResponse(BaseModel):
     grn_no: str
     grn_date: date
+    org_id: UUID
+    zone_id: UUID
     office_id: str
     vendor_id: str
     challan_no: str
@@ -70,6 +75,7 @@ class NewGRNResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        arbitrary_types_allowed = True
 
 
 # Optional: validator to ensure tyre totals are consistent (optional)

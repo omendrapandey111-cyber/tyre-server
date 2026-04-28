@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, Enum as SQLEnum
+from sqlalchemy import UUID, Column, Integer, String, Date, Float, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.sql import func
+from sqlalchemy.dialects.postgresql import UUID
 from datetime import date
+from uuid import UUID as PythonUUID
 from enum import Enum
 
 from app.db.database import Base
@@ -16,8 +18,11 @@ class NewGRN(Base):
     __tablename__ = "new_grn"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    grn_no = Column(String(50), unique=True, nullable=False, index=True)          # auto-generated business key
+    grn_no = Column(String(50), unique=True, nullable=False, index=True)          
     grn_date = Column(Date, nullable=False, server_default=func.current_date())
+
+    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False,  index=True)
+    zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id"), nullable=False, index=True)
     
     # Foreign keys from existing tables
     office_id = Column(String, ForeignKey("offices.id"), nullable=False)
@@ -48,7 +53,10 @@ class Tyre(Base):
     __tablename__ = "tyres"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    tyre_no = Column(String(50), unique=True, nullable=False, index=True)   
+    tyre_no = Column(String(50), unique=True, nullable=False, index=True)  
+
+    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
+    zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id"), nullable=False, index=True) 
     
     production_month = Column(String(10))   # e.g. "2026-03"
     size = Column(String(50), nullable=False)
