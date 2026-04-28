@@ -61,7 +61,6 @@ class NewGRNCreate(BaseModel):
 class NewGRNResponse(BaseModel):
     grn_no: str
     grn_date: date
-    org_id: Optional[UUID] = None
     zone_id: Optional[UUID] = None
     office_id: str
     vendor_id: str
@@ -75,7 +74,7 @@ class NewGRNResponse(BaseModel):
 
     class Config:
         from_attributes = True
-        arbitrary_types_allowed = True
+        extra = "ignore"
 
 
 # Optional: validator to ensure tyre totals are consistent (optional)

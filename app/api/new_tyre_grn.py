@@ -40,17 +40,13 @@ def create_new_tyre_grn(
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user)
 ):
-    # Security: User must belong to the same organization
-    if current_user.org_id != data.org_id:
-        raise HTTPException(status_code=403, detail="You can only create GRN for your own organization")
-
+    
     grn_no = generate_grn_no(db, data.type)
     grn_date = data.grn_date or date.today()
 
     db_grn = NewGRN(
         grn_no=grn_no,
         grn_date=grn_date,
-        org_id=data.org_id,
         zone_id=data.zone_id,
         office_id=data.office_id,
         vendor_id=data.vendor_id,
@@ -73,7 +69,6 @@ def create_new_tyre_grn(
     for tyre_data in data.tyres:
         tyre = Tyre(
             tyre_no=tyre_data.tyre_no,
-            org_id=data.org_id,
             zone_id=data.zone_id,
             production_month=tyre_data.production_month,
             size=tyre_data.size,
@@ -111,7 +106,6 @@ def create_new_tyre_grn(
     return NewGRNResponse(
         grn_no=grn_no,
         grn_date=grn_date,
-        org_id=data.org_id,
         zone_id=data.zone_id,
         office_id=data.office_id,
         vendor_id=data.vendor_id,
@@ -140,7 +134,6 @@ def get_grn_details(
     return NewGRNResponse(
         grn_no=grn.grn_no,
         grn_date=grn.grn_date,
-        org_id=grn.org_id,
         zone_id=grn.zone_id,
         office_id=grn.office_id,
         vendor_id=grn.vendor_id,
