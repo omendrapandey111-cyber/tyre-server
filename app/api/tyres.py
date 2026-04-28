@@ -1,3 +1,5 @@
+from urllib import response
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db.deps import get_db
@@ -12,16 +14,10 @@ router = APIRouter(prefix="/tyres", tags=["Tyres"])
 def get_all_tyres(db: Session = Depends(get_db), current_user: CurrentUser = Depends(get_current_user)):
     query = db.query(Tyre)
 
-    if current_user.role == 'superadmin':
-        pass
-    elif current_user.zone_id:
-        query = query.filter(Tyre.zone_id == current_user.zone_id)
-    else:
-        query = query.filter(Tyre.org_id == current_user.org_id)
 
-    tyres = query.all()
+    tyres = db.query(Tyre).all()
 
-    return [
+    response = [
         {
             "tyre_no": t.tyre_no,
             "type": t.grn.type if t.grn else None, 
@@ -37,3 +33,8 @@ def get_all_tyres(db: Session = Depends(get_db), current_user: CurrentUser = Dep
         }
         for t in tyres
     ]
+
+    return {
+        "message": "List of all tyres",
+        "tyres": response
+    }

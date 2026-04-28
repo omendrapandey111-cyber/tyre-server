@@ -4,12 +4,10 @@ from jose import JWTError, jwt
 from uuid import UUID
 import os
 
-# Initialize security scheme
 security = HTTPBearer(auto_error=True)
 
 
 class CurrentUser:
-    """Simple class to hold authenticated user information"""
     def __init__(self, id: str, org_id: UUID, zone_id: UUID | None, role: str | None):
         self.id = id
         self.org_id = org_id
@@ -20,16 +18,11 @@ class CurrentUser:
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> CurrentUser:
-    """
-    Decode JWT token and return CurrentUser object
-    """
     token = credentials.credentials
 
     try:
         payload = jwt.decode(
-            token,
-            os.getenv("SECRET_KEY"),
-            algorithms=["HS256"]
+            token, os.getenv("SECRET_KEY"), algorithms=["HS256"]
         )
 
         user_id = payload.get("sub")
@@ -40,34 +33,33 @@ def get_current_user(
         if not user_id or not org_id_str:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials: missing org_id",
-                headers={"WWW-Authenticate": "Bearer"},
+                detail="Invalid token: missing org_id",
             )
 
-        # Convert string to UUID
         org_uuid = UUID(org_id_str)
-        zone_uuid = UUID(zone_id_str) if zone_id_str else None
+
+        # Handle zone_id safely
+        zone_uuid = None
+        if zone_id_str and str(zone_id_str).lower() != "none":
+            try:
+                zone_uuid = UUID(zone_id_str)
+            except ValueError:
+                zone_uuid = None
 
         return CurrentUser(
             id=user_id,
             org_id=org_uuid,
             zone_id=zone_uuid,
-            role=role.lower() if role else None
+            role=role.lower() if role else None,
         )
 
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid UUID format in token",
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Authentication error: {str(e)}"
+            detail=f"Authentication failed: {str(e)}"
         )
