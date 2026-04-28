@@ -17,7 +17,7 @@ def get_all_tyres(db: Session = Depends(get_db), current_user: CurrentUser = Dep
 
     tyres = db.query(Tyre).all()
 
-    response = [
+    return [
         {
             "tyre_no": t.tyre_no,
             "type": t.grn.type if t.grn else None, 
@@ -33,8 +33,3 @@ def get_all_tyres(db: Session = Depends(get_db), current_user: CurrentUser = Dep
         }
         for t in tyres
     ]
-
-    return {
-        "message": "List of all tyres",
-        "tyres": response
-    }

@@ -131,10 +131,6 @@ def get_grn_details(
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user)
 ):
-    """
-    Fetch GRN by grn_no and return full data including org_id and zone_id.
-    Access control will be handled in the frontend (same as Sensors).
-    """
     grn = db.query(NewGRN).filter(NewGRN.grn_no == grn_no).first()
 
     if not grn:
