@@ -29,24 +29,33 @@ def generate_ir_no(db: Session, action_type: str, ir_date: date) -> str:
     return f"{prefix}-{date_str}-{seq:06d}"
 
 
-def get_latest_position(db, vehicle_no, position):
+def get_latest_position_record(db: Session, vehicle_no: str, position: str):
     return db.query(TyrePosition)\
         .filter(
             TyrePosition.vehicle_no == vehicle_no,
             TyrePosition.position == position,
         )\
-        .order_by(TyrePosition.created_at.desc())\
+        .order_by(TyrePosition.created_at.desc(), TyrePosition.id.desc())\
         .first()
 
 
-def get_latest_tyre_record(db, vehicle_no, tyre_no):
+def get_latest_tyre_record(db: Session, vehicle_no: str, tyre_no: str):
     return db.query(TyrePosition)\
         .filter(
             TyrePosition.vehicle_no == vehicle_no,
             TyrePosition.tyre_no == tyre_no,
         )\
-        .order_by(TyrePosition.created_at.desc())\
+        .order_by(TyrePosition.created_at.desc(), TyrePosition.id.desc())\
         .first()
+
+
+def is_position_occupied(db: Session, vehicle_no: str, position: str) -> bool:
+    latest = get_latest_position_record(db, vehicle_no, position)
+
+    if not latest:
+        return False  # never used → free
+
+    return latest.event_type == "Issue"
 
 
 def validate_position(layout, position):
@@ -65,9 +74,7 @@ def validate_position(layout, position):
 def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)):
 
     try:
-        print("Incoming data:", data.dict())
-
-        action_type = data.action_type 
+        action_type = data.action_type
 
         # 1. Validate Office
         if not db.query(Office).filter(Office.id == data.office_id).first():
@@ -81,7 +88,6 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
         layout = layout_obj.layout
 
         ir_date = data.ir_date or date.today()
-
         ir_no = generate_ir_no(db, action_type, ir_date)
 
         results = []
@@ -100,12 +106,12 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
 
                 validate_position(layout, item.wheel_position)
 
-                existing = get_latest_position(db, data.vehicle_no, item.wheel_position)
+                if is_position_occupied(db, data.vehicle_no, item.wheel_position):
+                    latest = get_latest_position_record(db, data.vehicle_no, item.wheel_position)
 
-                if existing and existing.event_type == "Issue":
                     raise HTTPException(
                         400,
-                        f"Position {item.wheel_position} already occupied. Perform receipt first."
+                        f"Position {item.wheel_position} already occupied by tyre {latest.tyre_no}. Perform receipt first."
                     )
 
                 ir_entry = IssueReceipt(
@@ -185,26 +191,17 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
 
         db.commit()
 
-        return [
-            {
-                "ir_no": r.ir_no,
-                "action_type": r.action_type,
-                "ir_date": r.ir_date,
-                "office_id": r.office_id,
-                "vehicle_no": r.vehicle_no,
-                "vehicle_km": r.vehicle_km,
-                "tyre_no": r.tyre_no,
-                "wheel_position": r.wheel_position,
-                "status": r.status,
-            }
-            for r in results
-        ]
+        return {
+            "message": "Transaction successful",
+            "ir_no": ir_no,
+            "count": len(results),
+        }
 
     except HTTPException:
         raise
 
     except Exception as e:
-        print(" ERROR:", str(e))
+        print("ERROR:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
