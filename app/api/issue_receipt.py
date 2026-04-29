@@ -1,5 +1,3 @@
-# app/api/issue_receipt.py
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date
@@ -52,7 +50,11 @@ def get_latest_tyre_record(db, vehicle_no, tyre_no):
 
 
 def validate_position(layout, position):
+    if not layout or "tyres" not in layout:
+        raise HTTPException(500, "Invalid layout structure")
+
     valid = [t["position"] for t in layout["tyres"]]
+
     if position not in valid:
         raise HTTPException(400, f"Invalid position {position}")
 
@@ -62,138 +64,148 @@ def validate_position(layout, position):
 @router.post("/", status_code=201)
 def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)):
 
-    # 1. Validate Office
-    if not db.query(Office).filter(Office.id == data.office_id).first():
-        raise HTTPException(404, "Office not found")
+    try:
+        print("Incoming data:", data.dict())
 
-    # 2. Validate Layout
-    layout_obj = db.query(TyreLayout).filter(TyreLayout.id == data.layout_id).first()
-    if not layout_obj:
-        raise HTTPException(404, "Layout not found")
+        action_type = data.action_type 
 
-    layout = layout_obj.layout
+        # 1. Validate Office
+        if not db.query(Office).filter(Office.id == data.office_id).first():
+            raise HTTPException(404, "Office not found")
 
-    ir_date = data.ir_date or date.today()
-    ir_no = generate_ir_no(db, data.action_type.value, ir_date)
+        # 2. Validate Layout
+        layout_obj = db.query(TyreLayout).filter(TyreLayout.id == data.layout_id).first()
+        if not layout_obj:
+            raise HTTPException(404, "Layout not found")
 
-    results = []
+        layout = layout_obj.layout
 
-    for item in data.details:
+        ir_date = data.ir_date or date.today()
 
-        tyre = db.query(Tyre).filter(Tyre.tyre_no == item.tyre_no).first()
-        if not tyre:
-            raise HTTPException(404, f"Tyre {item.tyre_no} not found")
+        ir_no = generate_ir_no(db, action_type, ir_date)
 
-        final_status = "On Vehicle" if data.action_type == "Issue" else "Off Vehicle"
+        results = []
 
-        # ================= ISSUE =================
-        if data.action_type == "Issue":
+        for item in data.details:
 
-            if not item.wheel_position:
-                raise HTTPException(400, "wheel_position required")
+            tyre = db.query(Tyre).filter(Tyre.tyre_no == item.tyre_no).first()
+            if not tyre:
+                raise HTTPException(404, f"Tyre {item.tyre_no} not found")
 
-            validate_position(layout, item.wheel_position)
+            # ================= ISSUE =================
+            if action_type == "Issue":
 
-            # Check if position already has ACTIVE tyre
-            existing = get_latest_position(db, data.vehicle_no, item.wheel_position)
+                if not item.wheel_position:
+                    raise HTTPException(400, "wheel_position required")
 
-            if existing and existing.event_type == "Issue":
-                # Do NOT auto-remove — frontend already handles receipt
-                raise HTTPException(
-                    400,
-                    f"Position {item.wheel_position} already occupied. Perform receipt first."
+                validate_position(layout, item.wheel_position)
+
+                existing = get_latest_position(db, data.vehicle_no, item.wheel_position)
+
+                if existing and existing.event_type == "Issue":
+                    raise HTTPException(
+                        400,
+                        f"Position {item.wheel_position} already occupied. Perform receipt first."
+                    )
+
+                ir_entry = IssueReceipt(
+                    ir_no=ir_no,
+                    action_type="Issue",
+                    ir_date=ir_date,
+                    office_id=data.office_id,
+                    vehicle_no=data.vehicle_no,
+                    vehicle_km=data.vehicle_km,
+                    tyre_no=item.tyre_no,
+                    wheel_position=item.wheel_position,
+                    status="On Vehicle",
+                    created_by=data.created_by,
                 )
 
-            # Create Issue Entry
-            ir_entry = IssueReceipt(
-                ir_no=ir_no,
-                action_type="Issue",
-                ir_date=ir_date,
-                office_id=data.office_id,
-                vehicle_no=data.vehicle_no,
-                vehicle_km=data.vehicle_km,
-                tyre_no=item.tyre_no,
-                wheel_position=item.wheel_position,
-                status="On Vehicle",
-                created_by=data.created_by,
-            )
+                db.add(ir_entry)
+                db.flush()
 
-            db.add(ir_entry)
-            db.flush()
+                db.add(TyrePosition(
+                    vehicle_no=data.vehicle_no,
+                    layout_id=data.layout_id,
+                    tyre_no=item.tyre_no,
+                    position=item.wheel_position,
+                    event_type="Issue",
+                    reference_ir_id=ir_entry.id,
+                    created_by=data.created_by
+                ))
 
-            # Log position
-            db.add(TyrePosition(
-                vehicle_no=data.vehicle_no,
-                layout_id=data.layout_id,
-                tyre_no=item.tyre_no,
-                position=item.wheel_position,
-                event_type="Issue",
-                reference_ir_id=ir_entry.id,
-                created_by=data.created_by
-            ))
+                tyre.vehicle_no = data.vehicle_no
+                tyre.status = "On Vehicle"
 
-            # Update tyre master
-            tyre.vehicle_no = data.vehicle_no
-            tyre.status = "On Vehicle"
+                db.add(tyre)
+                results.append(ir_entry)
 
-            db.add(tyre)
-            results.append(ir_entry)
+            # ================= RECEIPT =================
+            elif action_type == "Receipt":
 
-        # ================= RECEIPT =================
+                latest = get_latest_tyre_record(db, data.vehicle_no, item.tyre_no)
 
-        elif data.action_type == "Receipt":
+                if not latest or latest.event_type != "Issue":
+                    raise HTTPException(
+                        400,
+                        f"Tyre {item.tyre_no} is not currently on vehicle"
+                    )
 
-            latest = get_latest_tyre_record(db, data.vehicle_no, item.tyre_no)
-
-            # Only allow receipt if tyre is currently ON vehicle
-            if not latest or latest.event_type != "Issue":
-                raise HTTPException(
-                    400,
-                    f"Tyre {item.tyre_no} is not currently on vehicle"
+                ir_entry = IssueReceipt(
+                    ir_no=ir_no,
+                    action_type="Receipt",
+                    ir_date=ir_date,
+                    office_id=data.office_id,
+                    vehicle_no=data.vehicle_no,
+                    vehicle_km=data.vehicle_km,
+                    tyre_no=item.tyre_no,
+                    wheel_position=latest.position,
+                    status="Off Vehicle",
+                    created_by=data.created_by,
                 )
 
-            # Create Receipt Entry
-            ir_entry = IssueReceipt(
-                ir_no=ir_no,
-                action_type="Receipt",
-                ir_date=ir_date,
-                office_id=data.office_id,
-                vehicle_no=data.vehicle_no,
-                vehicle_km=data.vehicle_km,
-                tyre_no=item.tyre_no,
-                wheel_position=latest.position,
-                status="Off Vehicle",
-                created_by=data.created_by,
-            )
+                db.add(ir_entry)
+                db.flush()
 
-            db.add(ir_entry)
-            db.flush()
+                db.add(TyrePosition(
+                    vehicle_no=data.vehicle_no,
+                    layout_id=data.layout_id,
+                    tyre_no=item.tyre_no,
+                    position=latest.position,
+                    event_type="Receipt",
+                    reference_ir_id=ir_entry.id,
+                    created_by=data.created_by
+                ))
 
-            # Log receipt
-            db.add(TyrePosition(
-                vehicle_no=data.vehicle_no,
-                layout_id=data.layout_id,
-                tyre_no=item.tyre_no,
-                position=latest.position,
-                event_type="Receipt",
-                reference_ir_id=ir_entry.id,
-                created_by=data.created_by
-            ))
+                tyre.vehicle_no = None
+                tyre.status = "Off Vehicle"
 
-            # Update tyre master
-            tyre.vehicle_no = None
-            tyre.status = "Off Vehicle"
+                db.add(tyre)
+                results.append(ir_entry)
 
-            db.add(tyre)
-            results.append(ir_entry)
+        db.commit()
 
-    db.commit()
+        return [
+            {
+                "ir_no": r.ir_no,
+                "action_type": r.action_type,
+                "ir_date": r.ir_date,
+                "office_id": r.office_id,
+                "vehicle_no": r.vehicle_no,
+                "vehicle_km": r.vehicle_km,
+                "tyre_no": r.tyre_no,
+                "wheel_position": r.wheel_position,
+                "status": r.status,
+            }
+            for r in results
+        ]
 
-    return {
-        "message": "Transaction successful",
-        "count": len(results),
-        "ir_no": ir_no
-    }
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        print(" ERROR:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ================= GET ALL =================

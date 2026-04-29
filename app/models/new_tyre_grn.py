@@ -21,8 +21,7 @@ class NewGRN(Base):
     grn_no = Column(String(50), unique=True, nullable=False, index=True)          
     grn_date = Column(Date, nullable=False, server_default=func.current_date())
 
-    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False,  index=True)
-    zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id"), nullable=False, index=True)
+    zone_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     
     # Foreign keys from existing tables
     office_id = Column(String, ForeignKey("offices.id"), nullable=False)
@@ -55,8 +54,7 @@ class Tyre(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     tyre_no = Column(String(50), unique=True, nullable=False, index=True)  
 
-    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
-    zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id"), nullable=False, index=True) 
+    zone_id = Column(UUID(as_uuid=True), nullable=True, index=True) 
     
     production_month = Column(String(10))   # e.g. "2026-03"
     size = Column(String(50), nullable=False)

@@ -33,7 +33,7 @@ class NewGRNCreate(BaseModel):
     # grn_no and grn_date are auto-generated in backend
     grn_date: Optional[date] = None
 
-    zone_id: UUID = Field(..., description="Zone UUID")
+    zone_id: Optional[UUID] = None
     
     office_id: str = Field(..., min_length=1)
     vendor_id: str = Field(..., min_length=1)
