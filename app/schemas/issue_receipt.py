@@ -28,6 +28,8 @@ class IssueReceiptDetailCreate(BaseModel):
     issue_to_stepney: bool = False
     remarks: Optional[str] = None
 
+    removal_reason: Optional[str] = Field(None, description="Reason for Tyre removal")
+
 
 class IssueReceiptCreate(BaseModel):
     action_type: ActionType
@@ -52,6 +54,7 @@ class IssueReceiptResponse(BaseModel):
     tyre_no: str
     wheel_position: Optional[str]
     status: str
+    removal_reason: Optional[str]
     created_at: datetime
 
     class Config:

@@ -28,6 +28,8 @@ class TyreCreate(BaseModel):
     total_gst: Optional[float] = Field(0.0, ge=0)
     total_amt: float = Field(..., gt=0)
 
+    current_status: Optional[str] = Field("In Stock", description="Current status of the tyre")
+
 
 class NewGRNCreate(BaseModel):
     # grn_no and grn_date are auto-generated in backend
@@ -69,6 +71,7 @@ class NewGRNResponse(BaseModel):
     total_discount: float
     total_amount: float
     type: GRNType
+    current_status: str
     message: str = "GRN created successfully"
 
     class Config:

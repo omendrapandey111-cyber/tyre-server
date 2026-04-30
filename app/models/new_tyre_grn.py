@@ -72,6 +72,8 @@ class Tyre(Base):
     total_gst = Column(Float, default=0.0)
     total_amt = Column(Float, nullable=False)
     status = Column(String(20), nullable=False, default="Off Vehicle")
+
+    current_status = Column(String(150), nullable=False, default="In Stock")  
     
     # Link to GRN (we store grn_no so any tyre query instantly shows its GRN)
     grn_no = Column(String(50), ForeignKey("new_grn.grn_no"), nullable=False)

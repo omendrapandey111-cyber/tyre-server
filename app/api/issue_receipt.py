@@ -123,6 +123,7 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
                     vehicle_km=data.vehicle_km,
                     tyre_no=item.tyre_no,
                     wheel_position=item.wheel_position,
+                    removal_reason=None,   #not required for issue
                     status="On Vehicle",
                     created_by=data.created_by,
                 )
@@ -142,6 +143,7 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
 
                 tyre.vehicle_no = data.vehicle_no
                 tyre.status = "On Vehicle"
+                tyre.current_status = "On Vehicle"
 
                 db.add(tyre)
                 results.append(ir_entry)
@@ -166,6 +168,7 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
                     vehicle_km=data.vehicle_km,
                     tyre_no=item.tyre_no,
                     wheel_position=latest.position,
+                    removal_reason=item.removal_reason,
                     status="Off Vehicle",
                     created_by=data.created_by,
                 )
@@ -185,6 +188,7 @@ def create_issue_receipt(data: IssueReceiptCreate, db: Session = Depends(get_db)
 
                 tyre.vehicle_no = None
                 tyre.status = "Off Vehicle"
+                tyre.current_status = item.removal_reason
 
                 db.add(tyre)
                 results.append(ir_entry)

@@ -86,6 +86,7 @@ def create_new_tyre_grn(
             total_amt=tyre_data.total_amt,
             grn_no=grn_no,
             status="Off Vehicle",
+            current_status="In Stock"
         )
         db.add(tyre)
 

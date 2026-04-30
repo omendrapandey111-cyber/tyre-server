@@ -35,6 +35,8 @@ class IssueReceipt(Base):
     wheel_position = Column(String(50))
     remarks = Column(Text)
 
+    removal_reason = Column(String(150), nullable=True)  # Reason for removal (if applicable)
+
     # Final status after this transaction
     status = Column(String(20), nullable=False)   # "On Vehicle" or "Off Vehicle"
 
