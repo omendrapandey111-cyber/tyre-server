@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.db.deps import get_db
+from app.models.new_tyre_grn import Tyre
 from app.models.tyre_position import TyrePosition
 from app.schemas.tyre_position import TyrePositionResponse
 from app.utils.tyre import parse_position
@@ -67,6 +68,8 @@ def get_current_all_tyres(db: Session = Depends(get_db)):
     query = text("""
         SELECT 
             t.tyre_no,
+            t.status as tyre_status,
+            t.current_status,
             tp.vehicle_no,
             tp.position,
             tp.event_type,
@@ -99,6 +102,7 @@ def get_current_all_tyres(db: Session = Depends(get_db)):
                 "position": None,
                 "name": None,
                 "status": "Off Vehicle",
+                "current_status": row["current_status"],
                 "last_updated": None
             })
             continue
@@ -111,6 +115,7 @@ def get_current_all_tyres(db: Session = Depends(get_db)):
                 "position": None,
                 "name": None,
                 "status": "Off Vehicle",
+                "current_status": row["current_status"],
                 "last_updated": row["created_at"]
             })
         else:
@@ -125,6 +130,7 @@ def get_current_all_tyres(db: Session = Depends(get_db)):
                 "position": row["position"],
                 "name": name,
                 "status": "On Vehicle",
+                "current_status": row["current_status"],
                 "last_updated": row["created_at"]
             })
 
@@ -134,6 +140,10 @@ def get_current_all_tyres(db: Session = Depends(get_db)):
 # Get history of a specific tyre
 @router.get("/{tyre_no}", response_model=list[TyrePositionResponse])
 def get_tyre_history(tyre_no: str, db: Session = Depends(get_db)):
+    
+    tyre = db.query(Tyre).filter(Tyre.tyre_no == tyre_no).first()
+    if not tyre:
+        raise HTTPException(404, f"Tyre {tyre_no} not found")
 
     rows = db.query(TyrePosition)\
         .filter(TyrePosition.tyre_no == tyre_no)\

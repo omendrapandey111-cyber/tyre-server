@@ -28,6 +28,7 @@ def get_all_tyres(db: Session = Depends(get_db), current_user: CurrentUser = Dep
             "rubber_brand": t.rubber_brand,
             "rubber_type": t.rubber_type,
             "zone_id": t.zone_id,
+            "current_status": t.current_status,
             "created_at": str(t.grn.grn_date) if t.grn else None
         }
         for t in tyres
