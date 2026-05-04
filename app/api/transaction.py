@@ -7,6 +7,7 @@ from app.db.deps import get_db
 from app.models.transaction import Transaction, TransactionDetail
 from app.models.office import Office
 from app.models.fleet_vendor import FleetVendor
+from app.models.new_tyre_grn import Tyre
 from app.schemas.transaction import (
     GRNType,
     TransactionCreate,
@@ -33,6 +34,18 @@ GRN_PREFIX_MAP = {
     GRNType.RECEIVE_REMOULD: "RR",
     GRNType.RECEIVE_CLAIM:   "RC",
 }
+
+#HELPER TO DETERMINE THE DIRECTION OF THE TYRE MOVEMENT BASED ON GRN TYPE
+def is_inward_transaction(grn_type: GRNType) -> bool:
+    return grn_type in (GRNType.RECEIVE_REMOULD, GRNType.RECEIVE_CLAIM)
+
+def get_current_status_for_inward(grn_type: GRNType) -> str:
+    """Return the current status for inward transactions based on GRN type."""
+    status_map ={
+        GRNType.RECEIVE_REMOULD: "Receive-Remould",
+        GRNType.RECEIVE_CLAIM:   "Receive-Claim",
+    }
+    return status_map.get(grn_type, str(grn_type))
 
 
 def generate_grn_no(db: Session, grn_type: GRNType, txn_date: date) -> str:
@@ -129,11 +142,22 @@ def create_transaction(data: TransactionCreate, db: Session = Depends(get_db)):
         created_by=data.created_by,
     )
     db.add(db_txn)
-    db.commit()
-    db.refresh(db_txn)
+    db.flush() 
+
+    is_inward = is_inward_transaction(data.grn_type)
+    new_status = get_current_status_for_inward(data.grn_type) if is_inward else None
+
 
     # Add tyre details (this maintains the full lifecycle)
     for d in data.details:
+        #validate tyre exists
+        tyre = db.query(Tyre).filter(Tyre.tyre_no == d.tyre_no).first()
+        if not tyre: 
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Tyre with number '{d.tyre_no}' not found"
+            )
+        
         db.add(TransactionDetail(
             grn_no=grn_no,
             tyre_no=d.tyre_no,
@@ -143,6 +167,11 @@ def create_transaction(data: TransactionCreate, db: Session = Depends(get_db)):
             km_run=d.km_run,
             remark=d.remark,
         ))
+
+        # Update tyre status for inward transactions
+        if is_inward:
+            tyre.current_status = new_status
+            db.add(tyre)
 
     db.commit()
     db.refresh(db_txn)

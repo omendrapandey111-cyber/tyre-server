@@ -116,6 +116,7 @@ def create_new_tyre_grn(
         total_discount=db_grn.total_discount,
         total_amount=db_grn.total_amount,
         type=data.type,
+        current_status="In Stock",
         message="GRN created successfully with all tyres"
     )
 
@@ -144,5 +145,6 @@ def get_grn_details(
         total_discount=grn.total_discount,
         total_amount=grn.total_amount,
         type=grn.type,
+        current_status="In Stock",
         message="GRN details retrieved successfully"
     )
