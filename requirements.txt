@@ -6,3 +6,5 @@ sqlalchemy
 alembic
 python-jose
 pydantic-settings
+pandas
+openpyxl
