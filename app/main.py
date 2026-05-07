@@ -1,6 +1,6 @@
 from app.db.database import Base, engine
 from app.api import issue_receipt, new_tyre_grn, office, place, fleet_vendor, tyre_layout, tyre_position, tyre_support_master, tyres, vehicle_model, vehicle_type, transaction
-
+from app.api.reports.router import router as reports_router
 from fastapi.middleware.cors import CORSMiddleware
  
 #Base.metadata.create_all(bind=engine)
@@ -44,7 +44,8 @@ protected_routers = [
     issue_receipt.router,
     transaction.router,
     tyre_layout.router,
-    tyre_position.router
+    tyre_position.router,
+    reports_router,
 ]
 
 for router in protected_routers:
