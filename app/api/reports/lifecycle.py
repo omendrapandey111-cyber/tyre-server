@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Dict, List, Optional
 from datetime import date
 import pandas as pd
 from io import BytesIO
@@ -16,6 +16,16 @@ from app.models.transaction import Transaction, TransactionDetail
 
 router = APIRouter()
 
+def clean_grn_type(grn_type: str) -> str:
+    """Clean GRNType enum values for better readability"""
+    if not grn_type:
+        return ""
+    # Remove GRNType. prefix if present
+    cleaned = str(grn_type).replace("GRNType.", "").replace("GRNType_", "")
+    # Replace underscores with spaces and capitalize
+    cleaned = cleaned.replace("_", " ").strip()
+    return cleaned.title() if cleaned else ""
+
 
 @router.get("/tyre-lifecycle-report", summary="Tyre Complete Lifecycle Report")
 def get_tyre_lifecycle_report(
@@ -28,19 +38,20 @@ def get_tyre_lifecycle_report(
     if not tyre_no or tyre_no.strip() == "":
         raise HTTPException(status_code=400, detail="tyre_no is required")
 
-    events = []
+    events: List[Dict] = []
 
     # 1. New GRN / Purchase Entry
     tyre = db.query(Tyre).filter(Tyre.tyre_no == tyre_no).first()
     if tyre and tyre.grn:
-        grn = tyre.grn
+        grn: NewGRN = tyre.grn
+        grn_type_clean = clean_grn_type(grn.type)
         events.append({
             "Date": grn.grn_date,
             "Event Type": "New GRN",
             "Reference No": grn.grn_no,
-            "Action": f"Purchased - {grn.type}",
+            "Action": f"Purchased - {grn_type_clean}",
             "Vehicle No": "",
-            "GRN Type": grn.type,
+            "GRN Type": grn_type_clean,
             "Brand": tyre.brand,
             "Size": tyre.size,
             "Amount": tyre.total_amt,
@@ -58,7 +69,7 @@ def get_tyre_lifecycle_report(
     for ir in ir_records:
         events.append({
             "Date": ir.ir_date,
-            "Event Type": ir.action_type,                    # "Issue" or "Receipt"
+            "Event Type": ir.action_type,                    
             "Reference No": ir.ir_no,
             "Action": f"{ir.action_type} - {ir.status}",
             "Vehicle No": ir.vehicle_no,
@@ -83,13 +94,15 @@ def get_tyre_lifecycle_report(
 
     for td in trans_details:
         trans = td.transaction
+        event_type_clean = clean_grn_type(trans.grn_type)
+        action_clean = event_type_clean or "Transaction"
         events.append({
             "Date": trans.date,
-            "Event Type": trans.grn_type,                    # ← Changed: Shows actual type (Send-Remould, Scrap, etc.)
+            "Event Type": event_type_clean,                 
             "Reference No": trans.grn_no,
-            "Action": trans.grn_type,
+            "Action": action_clean,
             "Vehicle No": td.vehicle_no or "",
-            "GRN Type": trans.grn_type,
+            "GRN Type": event_type_clean,
             "Brand": "",
             "Size": "",
             "Amount": "",
@@ -103,19 +116,32 @@ def get_tyre_lifecycle_report(
             "KM Run": td.km_run,
         })
 
-    # Sort chronologically
-    events.sort(key=lambda x: x["Date"] or date.min)
+    # Sort Chronologically
+    def get_sort_key(e):
+        dt = e.get("Date")
+        return dt if dt is not None else date.min
+    
+    events.sort(key=get_sort_key)
 
-    # Apply date filter
+    #apply date filters
     if date_from:
         events = [e for e in events if e["Date"] and e["Date"] >= date_from]
     if date_to:
         events = [e for e in events if e["Date"] and e["Date"] <= date_to]
 
+    #create dataframes
     if not events:
-        df = pd.DataFrame([{"Message": f"No lifecycle history found for tyre: {tyre_no}"}])
+        df = pd.DataFrame([{"Message": f"No lifecycle history for tyre number {tyre_no} "}])
     else:
         df = pd.DataFrame(events)
+        #reorder columns
+        column_order = ["Date", "Event Type", "Reference No", "Action", 
+                        "Vehicle No", "GRN Type", "Brand", "Size", "Amount", 
+                        "Status", "Remarks", "Wheel Position", "Average NSD", 
+                        "Outer NSD", "Removal Reason", "NSD", "KM Run"]
+        
+        df = df[[col for col in column_order if col in df.columns]]
+
 
     # ==================== EXCEL EXPORT ====================
     output = BytesIO()
@@ -124,7 +150,7 @@ def get_tyre_lifecycle_report(
 
     output.seek(0)
 
-    filename = f"Tyre_Lifecycle_{date.today().strftime('%Y%m%d')}.xlsx"
+    filename = f"{tyre_no}_Tyre_Lifecycle_{date.today().strftime('%Y%m%d')}.xlsx"
 
     return StreamingResponse(
         output,
