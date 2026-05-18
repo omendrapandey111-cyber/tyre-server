@@ -2,7 +2,7 @@ from sqlalchemy import UUID, Column, Integer, String, Date, Float, ForeignKey, E
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID
-from datetime import date
+from sqlalchemy import DateTime
 from uuid import UUID as PythonUUID
 from enum import Enum
 
@@ -43,7 +43,9 @@ class NewGRN(Base):
     total_amount = Column(Float, nullable=False, default=0.0)
     
     type = Column(SQLEnum(GRNType), nullable=False)
-    
+    created_by = Column(String(50), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
     # Relationship to tyres (one-to-many)
     tyres = relationship("Tyre", back_populates="grn", cascade="all, delete-orphan")
 

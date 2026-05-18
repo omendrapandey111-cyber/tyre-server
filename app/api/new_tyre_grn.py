@@ -57,6 +57,7 @@ def create_new_tyre_grn(
         challan_date=data.challan_date,
         remark=data.remark,
         type=data.type.value,
+        created_by=data.created_by
     )
 
     db.add(db_grn)
@@ -117,6 +118,8 @@ def create_new_tyre_grn(
         total_amount=db_grn.total_amount,
         type=data.type,
         current_status="In Stock",
+        created_by=db_grn.created_by,
+        created_at=db_grn.created_at,
         message="GRN created successfully with all tyres"
     )
 
@@ -146,5 +149,7 @@ def get_grn_details(
         total_amount=grn.total_amount,
         type=grn.type,
         current_status="In Stock",
+        created_by=grn.created_by,
+        created_at=grn.created_at,
         message="GRN details retrieved successfully"
     )

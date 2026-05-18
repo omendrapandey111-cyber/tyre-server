@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
-from datetime import date
+from datetime import datetime, date
 from enum import Enum as PyEnum
 from uuid import UUID
 
@@ -55,7 +55,7 @@ class NewGRNCreate(BaseModel):
     total_amount: Optional[float] = None
     
     type: GRNType = Field(...)
-    
+    created_by: str = Field(..., min_length=1)
     tyres: List[TyreCreate] = Field(..., min_length=1, description="At least one tyre must be added")
 
 
@@ -72,6 +72,8 @@ class NewGRNResponse(BaseModel):
     total_amount: float
     type: GRNType
     current_status: str
+    created_by: str
+    created_at: datetime
     message: str = "GRN created successfully"
 
     class Config:

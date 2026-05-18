@@ -14,6 +14,12 @@ from app.models.new_tyre_grn import Tyre, NewGRN
 from app.models.issue_receipt import IssueReceipt
 from app.models.transaction import Transaction, TransactionDetail
 
+def _make_naive(dt):
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=None) if hasattr(dt, 'tzinfo') and dt.tzinfo else dt
+
+
 router = APIRouter()
 
 def clean_grn_type(grn_type: str) -> str:
@@ -59,6 +65,8 @@ def get_tyre_lifecycle_report(
             "Remarks": grn.remark,
             "NSD": "",
             "KM Run": "",
+            "Created By": grn.created_by,
+            "Created At": _make_naive(grn.created_at)
         })
 
     # 2. Issue & Receipt History
@@ -85,6 +93,8 @@ def get_tyre_lifecycle_report(
             "Removal Reason": ir.removal_reason,
             "NSD": "",
             "KM Run": "",
+            "Created By": ir.created_by,
+            "Created At": _make_naive(ir.created_at)
         })
 
     # 3. Transactions (Send-Remould, Scrap, Claim, etc.)
@@ -114,6 +124,8 @@ def get_tyre_lifecycle_report(
             "Removal Reason": "",
             "NSD": td.nsd,
             "KM Run": td.km_run,
+            "Created By": trans.created_by,
+            "Created At": _make_naive(trans.created_at)
         })
 
     # Sort Chronologically
@@ -138,7 +150,7 @@ def get_tyre_lifecycle_report(
         column_order = ["Date", "Event Type", "Reference No", "Action", 
                         "Vehicle No", "GRN Type", "Brand", "Size", "Amount", 
                         "Status", "Remarks", "Wheel Position", "Average NSD", 
-                        "Outer NSD", "Removal Reason", "NSD", "KM Run"]
+                        "Outer NSD", "Removal Reason", "NSD", "KM Run", "Created By", "Created At"]
         
         df = df[[col for col in column_order if col in df.columns]]
 

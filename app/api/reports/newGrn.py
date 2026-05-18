@@ -63,7 +63,6 @@ def get_new_grn_report(
 
     for grn in grns:
         for tyre in grn.tyres:   # Loop through all tyres in this GRN
-            # Optional Python-level tyre filter
             if tyre_no and tyre_no.lower() not in tyre.tyre_no.lower():
                 continue
 
@@ -82,6 +81,8 @@ def get_new_grn_report(
                 "Total GST": grn.total_gst,
                 "Total Discount": grn.total_discount,
                 "Remark": grn.remark,
+                "Created By": grn.created_by,
+                "Created At": _make_naive(grn.created_at),
 
                 # Tyre Details
                 "Tyre No": tyre.tyre_no,
