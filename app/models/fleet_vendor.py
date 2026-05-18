@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Column, Float, String, Text
 from app.db.database import Base
 
 def generate_uuid(prefix: str) -> str:
@@ -12,7 +12,7 @@ class FleetVendor(Base):
 
     id = Column(String, primary_key=True, index=True, default=generate_uuid("ven"))
 
-    # 🔹 Basic Info
+    #Basic Info
     name = Column(String, nullable=False)
     code = Column(String, unique=True, nullable=False)
     legal_entity_name = Column(String)
@@ -20,7 +20,7 @@ class FleetVendor(Base):
     roles = Column(String)              # can store comma-separated roles
     account_group = Column(String)
 
-    # 🔹 Office Details
+    # Office Details
     office_name = Column(String)
     city = Column(String)
     state = Column(String)
@@ -28,14 +28,14 @@ class FleetVendor(Base):
     address_line1 = Column(String)
     address_line2 = Column(String)
 
-    # 🔹 Contact Person
+    # Contact Person
     contact_full_name = Column(String)
     contact_phone = Column(String)
     contact_email = Column(String)
 
     id_card = Column(String)   # file path or unique ID reference
 
-    # 🔹 Bank Details
+    # Bank Details
     account_holder_name = Column(String)
     bank_name = Column(String)
     account_number = Column(String)
@@ -43,13 +43,16 @@ class FleetVendor(Base):
 
     gst_number = Column(String)
     account_type = Column(String)
+    cgst = Column(Float, default=0.0, nullable=True)
+    sgst = Column(Float, default=0.0, nullable=True)
+    igst = Column(Float, default=0.0, nullable=True)
 
-    # 🔹 Documents (store file paths or URLs)
+    # Documents (store file paths or URLs)
     company_registration_doc = Column(String, nullable=True)
     gst_certificate_doc = Column(String, nullable=True)
     bank_verification_doc = Column(String, nullable=True)
     compliance_doc = Column(String, nullable=True)
     address_proof_doc = Column(String, nullable=True)
 
-    # 🔹 Optional metadata
+    # Optional metadata
     notes = Column(Text)

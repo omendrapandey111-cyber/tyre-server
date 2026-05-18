@@ -26,6 +26,9 @@ class FleetVendorCreate(BaseModel):
     ifsc_code: str | None = None
     gst_number: str | None = None
     account_type: str | None = None
+    cgst: Optional[float] | None = 0.0
+    sgst: Optional[float] | None = 0.0  
+    igst: Optional[float] | None = 0.0
 
     company_registration_doc: Optional[str] | None = None
     gst_certificate_doc: Optional[str] | None = None
