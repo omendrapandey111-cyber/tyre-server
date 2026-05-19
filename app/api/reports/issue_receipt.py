@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 import pandas as pd
 from io import BytesIO
 from enum import Enum
@@ -20,11 +20,19 @@ class ActionTypeFilter(str, Enum):
     RECEIPT = "Receipt"
 
 
-def _make_naive(dt):
+# IST Timezone
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def _make_ist(dt):
+    """Convert UTC datetime to IST and make it timezone-naive for Excel"""
     if dt is None:
         return None
-    return dt.replace(tzinfo=None) if hasattr(dt, 'tzinfo') and dt.tzinfo else dt
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
 
+    ist_dt = dt.astimezone(IST)
+    # Remove timezones
+    return ist_dt.replace(tzinfo=None)
 
 router = APIRouter()
 
@@ -55,7 +63,10 @@ def get_issue_receipt_report(
         query = query.filter(issue_receipt_model.IssueReceipt.vehicle_no.ilike(f"%{vehicle_no}%"))
     if tyre_no:
         query = query.filter(issue_receipt_model.IssueReceipt.tyre_no.ilike(f"%{tyre_no}%"))
-        
+
+    if tyre_no: 
+        query = query.filter(issue_receipt_model.IssueReceipt.tyre_no.ilike(tyre_no))
+
     results = query.order_by(issue_receipt_model.IssueReceipt.ir_date.desc()).all()
 
     report_data = []
@@ -87,7 +98,7 @@ def get_issue_receipt_report(
 
             "Status": ir.status,
             "Created By": ir.created_by,
-            "Created At": _make_naive(ir.created_at),
+            "Created At": _make_ist(ir.created_at),
 
             # Tyre Information
             "Tyre Brand": tyre.brand if tyre else None,
@@ -117,7 +128,9 @@ def get_issue_receipt_report(
 
     output.seek(0)
 
-    filename = f"{base_name}_{date.today().strftime('%Y%m%d')}.xlsx"
+    #file name with date and time
+    now = datetime.now()
+    filename = f"{base_name}_{now.strftime('%Y%m%d_%H%M%S')}.xlsx"
 
     return StreamingResponse(
         output,

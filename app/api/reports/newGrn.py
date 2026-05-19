@@ -1,9 +1,8 @@
-
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 import pandas as pd
 from io import BytesIO
 from enum import Enum
@@ -11,7 +10,9 @@ from enum import Enum
 from app.db.deps import get_db
 from app.auth.dependencies import get_current_user
 
-from app.models.new_tyre_grn import NewGRN, Tyre   
+from app.models.new_tyre_grn import NewGRN, Tyre
+from app.models.fleet_vendor import FleetVendor
+from app.models.office import Office   
 
 
 class GRNTypeFilter(str, Enum):
@@ -21,14 +22,22 @@ class GRNTypeFilter(str, Enum):
     CHASSIS = "Chassis"
 
 
-def _make_naive(dt):
+# IST Conversion
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def _make_ist(dt):
+    """Convert UTC datetime to IST and make it timezone-naive for Excel"""
     if dt is None:
         return None
-    return dt.replace(tzinfo=None) if hasattr(dt, 'tzinfo') and dt.tzinfo else dt
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    ist_dt = dt.astimezone(IST)
+    # Remove timezones
+    return ist_dt.replace(tzinfo=None)
 
 
 router = APIRouter()
-
 
 @router.get("/new-grn-report", summary="Download New GRN / Tyre Purchase Report")
 def get_new_grn_report(
@@ -62,17 +71,30 @@ def get_new_grn_report(
     report_data = []
 
     for grn in grns:
+        #fetch office name
+        office = db.query(Office).filter(Office.id == grn.office_id).first()
+        office_name = office.name if office else grn.office_id
+
+        #fetch vendor name
+        vendor = db.query(FleetVendor).filter(FleetVendor.id == grn.vendor_id).first()
+        vendor_name = vendor.name if vendor else (grn.vendor_id or "N/A")
+
         for tyre in grn.tyres:   # Loop through all tyres in this GRN
             if tyre_no and tyre_no.lower() not in tyre.tyre_no.lower():
                 continue
+
+            #clean grn display name
+            grn_type_display = grn.type
+            if isinstance(grn_type_display, Enum):
+                grn_type_display = grn_type_display.value
 
             report_data.append({
                 # GRN Header Information
                 "GRN No": grn.grn_no,
                 "GRN Date": grn.grn_date,
-                "GRN Type": grn.type,
-                "Office ID": grn.office_id,
-                "Vendor ID": grn.vendor_id,
+                "GRN Type": grn_type_display,
+                "Office Name": office_name,
+                "Vendor Name": vendor_name,
                 "Vendor Office": grn.vendor_office,
                 "Challan No": grn.challan_no,
                 "Challan Date": grn.challan_date,
@@ -82,7 +104,7 @@ def get_new_grn_report(
                 "Total Discount": grn.total_discount,
                 "Remark": grn.remark,
                 "Created By": grn.created_by,
-                "Created At": _make_naive(grn.created_at),
+                "Created At": _make_ist(grn.created_at),
 
                 # Tyre Details
                 "Tyre No": tyre.tyre_no,
@@ -118,7 +140,8 @@ def get_new_grn_report(
 
     output.seek(0)
 
-    filename = f"{base_name}_{date.today().strftime('%Y%m%d')}.xlsx"
+    now = datetime.now()
+    filename = f"{base_name}_{now.strftime('%Y%m%d_%H%M%S')}.xlsx"
 
     return StreamingResponse(
         output,

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 import pandas as pd
 from io import BytesIO
 from enum import Enum
@@ -12,6 +12,8 @@ from app.auth.dependencies import get_current_user
 
 from app.models import transaction as transaction_model   
 from app.models.new_tyre_grn import Tyre
+from app.models.fleet_vendor import FleetVendor
+from app.models.office import Office
 
 #Enums for dropdown filters
 class GRNTypeFilter(str, Enum):
@@ -24,10 +26,19 @@ class GRNTypeFilter(str, Enum):
     RECEIVE_REMOULD = "Receive-Remould"
     RECEIVE_CLAIM = "Receive-Claim"
 
-def _make_naive(dt):
+# IST Timezone
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def _make_ist(dt):
+    """Convert UTC datetime to IST and make it timezone-naive for Excel"""
     if dt is None:
         return None
-    return dt.replace(tzinfo=None) if hasattr(dt, 'tzinfo') and dt.tzinfo else dt
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    ist_dt = dt.astimezone(IST)
+    # Remove timezones
+    return ist_dt.replace(tzinfo=None)
 
 router = APIRouter()
 
@@ -61,21 +72,34 @@ def get_transaction_report(
 
     report_data = []
     for trans in transactions:
+        #fetch office  details
+        office = db.query(Office).filter(Office.id == trans.office_id).first()
+        office_name = office.name if office else trans.office_id
+
+        #fetch vendor details
+        vendor = db.query(FleetVendor).filter(FleetVendor.id == trans.vendor_id).first()
+        vendor_name = vendor.name if vendor else (trans.vendor_id or "N/A")
+
         for detail in trans.details:
             tyre = db.query(Tyre).filter(Tyre.tyre_no == detail.tyre_no).first() if detail.tyre_no else None
 
+            #clean grn display name
+            grn_type_display = trans.grn_type
+            if isinstance(grn_type_display, Enum):
+                grn_type_display = grn_type_display.value
+
             report_data.append({
                 "GRN No": trans.grn_no,
-                "GRN Type": trans.grn_type,
+                "GRN Type": grn_type_display,
                 "Transaction Date": trans.date,
-                "Office ID": trans.office_id,
-                "Vendor ID": trans.vendor_id,
+                "Office Name": office_name,
+                "Vendor Name": vendor_name,
                 "Total Tyres": trans.total_tyres,
                 "Total Amount": trans.total_amount,
                 "Remark / Reason": trans.remark_reason,
                 "Place": trans.place,
                 "Created By": trans.created_by,
-                "Created At": _make_naive(trans.created_at),
+                "Created At": _make_ist(trans.created_at),
 
                 "Tyre No": detail.tyre_no,
                 "Vehicle No": detail.vehicle_no,
@@ -106,7 +130,8 @@ def get_transaction_report(
 
     output.seek(0)
 
-    filename = f"{base_name}_{date.today().strftime('%Y%m%d')}.xlsx"
+    now = datetime.now()
+    filename = f"{base_name}_{now.strftime('%Y%m%d_%H%M%S')}.xlsx"
 
     return StreamingResponse(
         output,

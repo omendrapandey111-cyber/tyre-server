@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Dict, List, Optional
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 import pandas as pd
 from io import BytesIO
 
@@ -14,13 +14,6 @@ from app.models.new_tyre_grn import Tyre, NewGRN
 from app.models.issue_receipt import IssueReceipt
 from app.models.transaction import Transaction, TransactionDetail
 
-def _make_naive(dt):
-    if dt is None:
-        return None
-    return dt.replace(tzinfo=None) if hasattr(dt, 'tzinfo') and dt.tzinfo else dt
-
-
-router = APIRouter()
 
 def clean_grn_type(grn_type: str) -> str:
     """Clean GRNType enum values for better readability"""
@@ -32,6 +25,21 @@ def clean_grn_type(grn_type: str) -> str:
     cleaned = cleaned.replace("_", " ").strip()
     return cleaned.title() if cleaned else ""
 
+# IST Timezone
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def _make_ist(dt):
+    """Convert UTC datetime to IST and make it timezone-naive for Excel"""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    ist_dt = dt.astimezone(IST)
+    # Remove timezones
+    return ist_dt.replace(tzinfo=None)
+
+router = APIRouter()
 
 @router.get("/tyre-lifecycle-report", summary="Tyre Complete Lifecycle Report")
 def get_tyre_lifecycle_report(
@@ -66,7 +74,7 @@ def get_tyre_lifecycle_report(
             "NSD": "",
             "KM Run": "",
             "Created By": grn.created_by,
-            "Created At": _make_naive(grn.created_at)
+            "Created At": _make_ist(grn.created_at)
         })
 
     # 2. Issue & Receipt History
@@ -94,7 +102,7 @@ def get_tyre_lifecycle_report(
             "NSD": "",
             "KM Run": "",
             "Created By": ir.created_by,
-            "Created At": _make_naive(ir.created_at)
+            "Created At": _make_ist(ir.created_at)
         })
 
     # 3. Transactions (Send-Remould, Scrap, Claim, etc.)
@@ -125,13 +133,14 @@ def get_tyre_lifecycle_report(
             "NSD": td.nsd,
             "KM Run": td.km_run,
             "Created By": trans.created_by,
-            "Created At": _make_naive(trans.created_at)
+            "Created At": _make_ist(trans.created_at)
         })
 
     # Sort Chronologically
     def get_sort_key(e):
-        dt = e.get("Date")
-        return dt if dt is not None else date.min
+        created_at = e.get("Created At")
+        if created_at is None: return datetime.min
+        return created_at 
     
     events.sort(key=get_sort_key)
 
@@ -162,7 +171,8 @@ def get_tyre_lifecycle_report(
 
     output.seek(0)
 
-    filename = f"{tyre_no}_Tyre_Lifecycle_{date.today().strftime('%Y%m%d')}.xlsx"
+    now = datetime.now()
+    filename = f"{tyre_no}_Tyre_Lifecycle_{now.strftime('%Y%m%d_%H%M%S')}.xlsx"
 
     return StreamingResponse(
         output,
