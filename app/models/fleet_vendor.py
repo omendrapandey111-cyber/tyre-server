@@ -1,5 +1,4 @@
 import uuid
-
 from sqlalchemy import Column, Float, String, Text
 from app.db.database import Base
 
@@ -10,14 +9,14 @@ def generate_uuid(prefix: str) -> str:
 class FleetVendor(Base):
     __tablename__ = "fleet_vendors"
 
-    id = Column(String, primary_key=True, index=True, default=generate_uuid("ven"))
+    id = Column(String, primary_key=True, index=True, default=lambda: generate_uuid("ven"))
 
     #Basic Info
     name = Column(String, nullable=False)
     code = Column(String, unique=True, nullable=False)
     legal_entity_name = Column(String)
 
-    roles = Column(String)              # can store comma-separated roles
+    roles = Column(String)              
     account_group = Column(String)
 
     # Office Details
@@ -33,7 +32,7 @@ class FleetVendor(Base):
     contact_phone = Column(String)
     contact_email = Column(String)
 
-    id_card = Column(String)   # file path or unique ID reference
+    id_card = Column(String)  
 
     # Bank Details
     account_holder_name = Column(String)
@@ -47,7 +46,7 @@ class FleetVendor(Base):
     sgst = Column(Float, default=0.0, nullable=True)
     igst = Column(Float, default=0.0, nullable=True)
 
-    # Documents (store file paths or URLs)
+    # Documents (store URLs)
     company_registration_doc = Column(String, nullable=True)
     gst_certificate_doc = Column(String, nullable=True)
     bank_verification_doc = Column(String, nullable=True)

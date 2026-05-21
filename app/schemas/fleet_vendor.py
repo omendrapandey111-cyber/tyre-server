@@ -1,5 +1,4 @@
 from typing import Optional
-
 from pydantic import BaseModel
 
 class FleetVendorCreate(BaseModel):
@@ -29,6 +28,7 @@ class FleetVendorCreate(BaseModel):
     cgst: Optional[float] | None = 0.0
     sgst: Optional[float] | None = 0.0  
     igst: Optional[float] | None = 0.0
+    notes: Optional[str] | None = None
 
     company_registration_doc: Optional[str] | None = None
     gst_certificate_doc: Optional[str] | None = None

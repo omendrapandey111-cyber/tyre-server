@@ -8,3 +8,5 @@ python-jose
 pydantic-settings
 pandas
 openpyxl
+boto3
+python-multipart
