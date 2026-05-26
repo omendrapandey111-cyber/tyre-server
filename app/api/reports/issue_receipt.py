@@ -194,13 +194,12 @@ def get_issue_receipt_report(
                 ws.column_dimensions[column_letter].width = adjusted_width
 
     else:
-        # Empty sheet fallback
-        empty_sheet_name = (
-        str(tyre_no)[:31]
-        if tyre_no
-        else "No_Data"
-    )
-    ws = wb.create_sheet(title=empty_sheet_name)
+        if tyre_no:
+            sheet_title = str(tyre_no)[:31]
+        else:
+            sheet_title = "No_Data"
+
+    ws = wb.create_sheet(title=sheet_title)
     ws.append(["No records found"])
 
     # Save workbook
