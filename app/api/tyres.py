@@ -1,18 +1,26 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
+from uuid import UUID
 from sqlalchemy.orm import Session
-from app.db.deps import get_db
+from app.db.deps import get_db_tyre
 from app.models.new_tyre_grn import Tyre
 from app.core.security import CurrentUser, get_current_user
 from typing import List   
 
 router = APIRouter(prefix="/tyres", tags=["Tyres"])
 
+#helper function for zone filtering
+def get_zone_filter(current_user: CurrentUser = Depends(get_current_user)):
+    """Return zone_id if user is not admin"""
+    if current_user.role == "admin" or current_user.zone_id is None:
+        return None
+    return current_user.zone_id
 
 @router.get("/")
-def get_all_tyres(db: Session = Depends(get_db), current_user: CurrentUser = Depends(get_current_user)):
+def get_all_tyres(db: Session = Depends(get_db_tyre), zone_id: UUID | None = Depends(get_zone_filter)):
     query = db.query(Tyre)
-
-    tyres = db.query(Tyre).all()
+    if zone_id:
+        query = query.filter(Tyre.zone_id == zone_id)
+    tyres = query.all()
 
     return [
         {
@@ -32,15 +40,15 @@ def get_all_tyres(db: Session = Depends(get_db), current_user: CurrentUser = Dep
     ]
 
 @router.get("/inventory")
-def get_inventory_tyres(db: Session = Depends(get_db), current_user: CurrentUser = Depends(get_current_user),
+def get_inventory_tyres(db: Session = Depends(get_db_tyre), zone_id: UUID | None = Depends(get_zone_filter),
     statuses: List[str] = Query(
-        default = ["In Stock", "Received-Remould", "Received-Claim", "Rotation"],
+        default = ["In Stock", "Receive-Remould", "Receive-Claim", "Rotation"],
         description = "Filter tyres by their current status. Multiple statuses can be provided."
     )):
     """
     Inventory endpoint to fetch tyres based on their current status. 
     """
-    allowed_statuses = ["In Stock", "Received-Remould", "Received-Claim", "Rotation"]
+    allowed_statuses = ["In Stock", "Receive-Remould", "Receive-Claim", "Rotation"]
 
     #validate that provided statuses are valid
     for status in statuses:
@@ -48,6 +56,8 @@ def get_inventory_tyres(db: Session = Depends(get_db), current_user: CurrentUser
             raise ValueError(f"Invalid status: {status}. Allowed statuses are: {allowed_statuses}")
         
     query = db.query(Tyre).filter(Tyre.current_status.in_(statuses))
+    if zone_id:
+        query = query.filter(Tyre.zone_id == zone_id)
     tyres = query.all()
 
     return [

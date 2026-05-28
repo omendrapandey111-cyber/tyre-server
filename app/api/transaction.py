@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import date
 from typing import List, Optional
 
-from app.db.deps import get_db
+from app.db.deps import get_db_tyre as get_db
 from app.models.transaction import Transaction, TransactionDetail
 from app.models.office import Office
 from app.models.fleet_vendor import FleetVendor

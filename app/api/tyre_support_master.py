@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.db.deps import get_db
+from app.db.deps import get_db_tyre as get_db
 from app.models.manufacturer import Manufacturer
 from app.models.tyre_brand import TyreBrand
 from app.schemas.manufacturer import ManufacturerOut

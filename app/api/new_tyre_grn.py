@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import date
 from uuid import UUID
 
-from app.db.deps import get_db
+from app.db.deps import get_db_tyre as get_db
 from app.models.new_tyre_grn import NewGRN, Tyre, GRNType
 from app.schemas.new_tyre_grn import NewGRNCreate, NewGRNResponse
 from app.core.security import get_current_user , CurrentUser  

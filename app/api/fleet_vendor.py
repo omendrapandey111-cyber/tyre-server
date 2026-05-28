@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
-from app.db.deps import get_db
+from app.db.deps import get_db_tyre as get_db
 from app.models.fleet_vendor import FleetVendor, generate_uuid
 from app.schemas.fleet_vendor import FleetVendorOut
 from app.utils.r2_upload import upload_file_to_r2

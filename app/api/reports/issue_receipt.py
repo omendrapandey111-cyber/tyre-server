@@ -9,7 +9,7 @@ from enum import Enum
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 
-from app.db.deps import get_db
+from app.db.deps import get_db_tyre as get_db
 from app.auth.dependencies import get_current_user
 
 from app.models import issue_receipt as issue_receipt_model
@@ -63,7 +63,7 @@ def get_issue_receipt_report(
             issue_receipt_model.IssueReceipt.vehicle_no.ilike(f"%{vehicle_no}%"))
     if tyre_no:
         query = query.filter(
-            issue_receipt_model.IssueReceipt.tyre_no.ilike(f"%{tyre_no}%"))
+            issue_receipt_model.IssueReceipt.tyre_no == tyre_no.strip())
 
     results = query.order_by(
         issue_receipt_model.IssueReceipt.ir_date.desc()
@@ -72,6 +72,8 @@ def get_issue_receipt_report(
     report_data = []
 
     for ir in results:
+        if tyre_no and ir.tyre_no != tyre_no.strip():
+            continue
         tyre = (
             db.query(Tyre)
             .filter(Tyre.tyre_no == ir.tyre_no)
@@ -165,42 +167,31 @@ def get_issue_receipt_report(
 
     # CREATE SEPARATE SHEET FOR EACH TYRE
     if not df.empty:
-
-        # Group dataframe by tyre number
         grouped = df.groupby("Tyre No")
         for tyre_number, tyre_df in grouped:
-            # Excel sheet name max length = 31
-            sheet_title = str(tyre_number)[:31] if tyre_number else "Unknown_Tyre"
-
+            if not tyre_number:
+                continue
+            sheet_title = str(tyre_number).strip()[:31] if tyre_number else "Unknown_Tyre"
             ws = wb.create_sheet(title=sheet_title)
 
-            # Write dataframe rows
             for r in dataframe_to_rows(tyre_df, index=False, header=True):
                 ws.append(r)
 
-            # Auto adjust widths
             for column in ws.columns:
                 max_length = 0
                 column_letter = column[0].column_letter
-
                 for cell in column:
                     try:
                         if cell.value:
                             max_length = max(max_length, len(str(cell.value)))
                     except:
                         pass
+                ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
 
-                adjusted_width = min(max_length + 2, 50)
-                ws.column_dimensions[column_letter].width = adjusted_width
-
-    else:
-        if tyre_no:
-            sheet_title = str(tyre_no)[:31]
-        else:
-            sheet_title = "No_Data"
-
-    ws = wb.create_sheet(title=sheet_title)
-    ws.append(["No records found"])
+    else:                                                                          
+        sheet_title = str(tyre_no).strip()[:31] if tyre_no else "No_Data"
+        ws = wb.create_sheet(title=sheet_title)                                    
+        ws.append(["No records found"])                                            
 
     # Save workbook
     wb.save(output)

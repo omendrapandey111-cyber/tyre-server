@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import date
 
-from app.db.deps import get_db
+from app.db.deps import get_db_tyre as get_db
 from app.schemas.lifecycle import TyreLifecycleResponse, TyreLifecycleEvent
 
 from app.models.new_tyre_grn import Tyre, NewGRN

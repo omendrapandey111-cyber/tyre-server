@@ -1,4 +1,4 @@
-from app.db.database import Base, engine
+from app.db.database import Base, engine_main, engine_tyre
 from app.api import issue_receipt, new_tyre_grn, office, place, fleet_vendor, tyre_layout, tyre_position, tyre_support_master, tyres, vehicle_model, vehicle_type, transaction, tyre_lifecycle
 from app.api.reports.router import router as reports_router
 from fastapi.middleware.cors import CORSMiddleware

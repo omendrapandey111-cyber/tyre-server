@@ -9,7 +9,7 @@ from enum import Enum
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 
-from app.db.deps import get_db
+from app.db.deps import get_db_tyre as get_db
 from app.auth.dependencies import get_current_user
 
 from app.models.new_tyre_grn import NewGRN, Tyre
@@ -56,7 +56,7 @@ def get_new_grn_report(
     if date_to:
         query = query.filter(NewGRN.grn_date <= date_to)
     if tyre_no:
-        query = query.join(NewGRN.tyres).filter(Tyre.tyre_no.ilike(f"%{tyre_no}%"))
+        query = query.join(NewGRN.tyres).filter(Tyre.tyre_no == tyre_no.strip())
 
     grns = query.order_by(NewGRN.grn_date.desc()).all()
 

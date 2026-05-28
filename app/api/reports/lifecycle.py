@@ -8,7 +8,7 @@ from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 
-from app.db.deps import get_db
+from app.db.deps import get_db_tyre as get_db
 from app.auth.dependencies import get_current_user
 
 from app.models.new_tyre_grn import Tyre, NewGRN

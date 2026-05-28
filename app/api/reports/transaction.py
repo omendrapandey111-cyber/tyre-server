@@ -9,7 +9,7 @@ from enum import Enum
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 
-from app.db.deps import get_db
+from app.db.deps import get_db_tyre as get_db
 from app.auth.dependencies import get_current_user
 
 from app.models import transaction as transaction_model   

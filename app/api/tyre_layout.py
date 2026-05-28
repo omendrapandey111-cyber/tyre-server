@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.db.deps import get_db
+from app.db.deps import get_db_tyre as get_db
 from app.models.tyre_layouts import TyreLayout
 from app.schemas.tyre_layout import (
-    TyreLayoutCreate,
     TyreLayoutResponse
 )
 from app.utils.tyre import parse_position

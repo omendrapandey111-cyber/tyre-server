@@ -1,7 +1,16 @@
-from app.db.database import SessionLocal
+from app.db.database import SessionLocalMain, SessionLocalTyre
 
-def get_db():
-    db = SessionLocal()
+#for main database
+def get_db_main():
+    db = SessionLocalMain()
+    try:
+        yield db
+    finally:
+        db.close()
+
+#for tyre database
+def get_db_tyre():
+    db = SessionLocalTyre()
     try:
         yield db
     finally:

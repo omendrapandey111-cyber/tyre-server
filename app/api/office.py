@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.db.deps import get_db
+from app.db.deps import get_db_tyre as get_db
 from app.models.office import Office
 from app.models.place import Place
 from app.schemas.office import OfficeCreate, OfficeOut
