@@ -11,3 +11,4 @@ openpyxl
 boto3
 python-multipart
 psycopg
+psycopg[binary]
